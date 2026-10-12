@@ -1,0 +1,27 @@
+key: lighting
+name: 部屋別照明器具表（電気の設備図）
+detect: [照明, 器具表, 'L-', ダウンライト]
+template: 部屋別照明器具表.xlsx
+sheet: 部屋別照明
+title: 部屋別照明器具表
+header:
+  - {field: 工事名称, labels: [工事名称, 工事名, 物件名], cell: C3}
+  - {field: 図面名称, labels: [図面名称, 図面名], cell: C4}
+  - {field: 図番, labels: [図番, 図面番号], cell: F3, check: '[A-Z]{1,2}-\d{2,3}'}
+  - {field: 日付, labels: [日付, 作成日], cell: F4, check: '\d{4}\.\d{2}\.\d{2}'}
+records:
+  mode: rooms
+  anchor: {field: 部屋名, vocab: 部屋名, vocab_column: 部屋名}
+  attrs:
+    - {field: 器具, pattern: '([A-Z])[×xX](\d+)', multi: true, groups: {器具記号: 1, 台数: 2}}
+    - {field: 回路, pattern: 'L-?(\d+)', format: 'L-{1}', required: true}
+  radius: 45
+  aux_tables:
+    器具表:
+      headers: {記号: [記号], 品名: [品名], 型番: [型番], W: ['消費電力(W)', 消費電力]}
+      key: 記号
+      checks: {記号: '[A-Z]'}
+  derive:
+    - {field: 消費電力(W), multiply: [台数, W], table: 器具表, key: 器具記号}
+  columns: [部屋名, 器具記号, 台数, 回路, 消費電力(W)]
+start_row: 7

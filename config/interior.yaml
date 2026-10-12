@@ -1,0 +1,22 @@
+key: interior
+name: 内部仕上一覧（店舗の内装図）
+detect: [仕上表, 巾木, 天井高, 仕上]
+template: 内部仕上一覧.xlsx
+sheet: 仕上一覧
+title: 内部仕上一覧
+header:
+  - {field: 工事名称, labels: [工事名称, 工事名, 物件名], cell: C3}
+  - {field: 図面名称, labels: [図面名称, 図面名], cell: C4}
+  - {field: 図番, labels: [図番, 図面番号], cell: F3, check: '[A-Z]{1,2}-\d{2,3}'}
+  - {field: 日付, labels: [日付, 作成日], cell: F4, check: '\d{4}\.\d{2}\.\d{2}'}
+records:
+  mode: table
+  headers: {室名: [室名], 床: [床], 巾木: [巾木, 幅木], 壁: [壁], 天井: [天井], 天井高: [天井高]}
+  key: 室名
+  required: [室名, 床, 巾木, 壁, 天井, 天井高]
+  vocab:
+    - {field: 室名, sheet: 部屋名, column: 部屋名}
+    - {fields: [床, 巾木, 壁, 天井], sheet: 仕上材, column: 材料, tokens: true}
+  checks: {天井高: '\d{4}'}
+  columns: [室名, 床, 巾木, 壁, 天井, 天井高]
+start_row: 7

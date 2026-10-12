@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>図面転記</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --ink: #1d2733; --sub: #5b6776; --line: #d5dbe3; --bg: #eef1f5; --panel: #ffffff;
+    --accent: #0071bb; --accent-soft: #e3f0fa; --warn: #fff2a8; --warn-line: #e0a100; --ok: #1f8a4c;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { font-family: "Yu Gothic UI", "Meiryo UI", "Meiryo", sans-serif; color: var(--ink); background: var(--bg);
+         font-size: 13px; display: flex; flex-direction: column; overflow: hidden; }
+  header { height: 50px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 14px;
+           background: var(--panel); border-bottom: 1px solid var(--line); }
+  .brand { font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 8px; margin-right: 6px; white-space: nowrap; flex: none; }
+  .brand i { width: 22px; height: 22px; border-radius: 4px; background: var(--accent); display: inline-block; position: relative; }
+  .brand i::after { content: ""; position: absolute; inset: 5px 6px; border: 2px solid #fff; border-top: none; border-right: none; }
+  button, .btn { font: inherit; border: 1px solid var(--line); background: #fff; color: var(--ink); border-radius: 6px;
+                 padding: 7px 12px; cursor: pointer; white-space: nowrap; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+  button:disabled { opacity: .45; cursor: default; }
+  .fname { color: var(--sub); max-width: 210px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  select { font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+  .chip { padding: 5px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 700;
+          white-space: nowrap; }
+  .chip.warn { background: var(--warn); color: #7a5600; }
+  .chip.done { background: #e2f4ea; color: var(--ok); }
+  .spacer { flex: 1; }
+  main { flex: 1; display: grid; grid-template-columns: 1fr 520px; min-height: 0; }
+  #viewer { position: relative; overflow: hidden; background: #d9dee5; border-right: 1px solid var(--line); }
+  #stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; transition: transform .55s ease; }
+  #stage img { display: block; }
+  .box { position: absolute; border: 1.5px solid rgba(0,113,187,.55); border-radius: 2px; pointer-events: none; }
+  .box.flag { border-color: var(--warn-line); background: rgba(255, 214, 0, .28); }
+  .box.fixed { border-color: var(--ok); background: rgba(31, 138, 76, .12); }
+  .box.sel { border: 2.5px solid var(--accent); box-shadow: 0 0 0 4px rgba(0,113,187,.25); }
+  #empty { position: absolute; inset: 24px; border: 2px dashed #aab4c0; border-radius: 12px; display: flex;
+           align-items: center; justify-content: center; flex-direction: column; gap: 10px; color: var(--sub);
+           font-size: 15px; background: rgba(255,255,255,.5); }
+  #empty.drag { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  #busy { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column;
+          gap: 12px; background: rgba(238,241,245,.82); font-size: 15px; font-weight: 700; }
+  .spin { width: 34px; height: 34px; border: 4px solid #c7d6e5; border-top-color: var(--accent); border-radius: 50%;
+          animation: r 1s linear infinite; }
+  @keyframes r { to { transform: rotate(360deg); } }
+  #side { display: flex; flex-direction: column; min-height: 0; background: var(--panel); }
+  #focus { flex: none; min-height: 58px; padding: 9px 14px; border-bottom: 1px solid var(--line); display: flex;
+           align-items: center; gap: 10px; background: #fafbfc; }
+  #focus .msg { flex: 1; line-height: 1.45; }
+  #focus .msg b { display: block; }
+  #focus .msg span { color: var(--sub); }
+  #form { flex: 1; overflow: auto; padding: 10px 14px 14px; }
+  h3 { font-size: 12px; color: var(--sub); margin: 8px 0 6px; font-weight: 700; }
+  .hgrid { display: grid; grid-template-columns: 68px 1fr 52px 1fr; gap: 5px 8px; align-items: center; }
+  .hgrid label { color: var(--sub); font-size: 12px; text-align: right; }
+  input.v { font: inherit; width: 100%; padding: 5px 7px; border: 1px solid var(--line); border-radius: 4px;
+            background: #fff; color: var(--ink); }
+  input.v:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  input.v.flag { background: var(--warn); border-color: var(--warn-line); }
+  input.v.fixed { border-color: #9fd3b4; background: #f2fbf5; }
+  input.v.derived { background: #eaf3fb; border-color: #b9d4ea; color: #0b4f7c; }
+  .legend { display: flex; gap: 12px; color: var(--sub); font-size: 11.5px; margin: 2px 0 6px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 4px; vertical-align: -2px; }
+  input.v.sel { outline: 2px solid var(--accent); outline-offset: -1px; }
+  table.rec { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  table.rec th { font-size: 12px; color: var(--sub); font-weight: 700; text-align: left; padding: 4px 3px;
+                 border-bottom: 1px solid var(--line); position: sticky; top: -10px; background: #fff; }
+  table.rec td { padding: 3px 3px; }
+  table.rec td.no { color: var(--sub); width: 22px; text-align: right; padding-right: 6px; }
+  footer.bar { flex: none; padding: 10px 14px; border-top: 1px solid var(--line); display: flex; gap: 10px;
+               align-items: center; background: #fff; }
+  footer.bar .note { color: var(--sub); flex: 1; }
+  #sheet { display: none; flex: 1; overflow: auto; padding: 12px 14px; }
+  #sheet .saved { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  #sheet .saved b { color: var(--ok); font-size: 15px; }
+  #sheet .path { color: var(--sub); font-size: 12px; word-break: break-all; }
+  .xl { border-collapse: collapse; font-family: "Yu Gothic", "Meiryo", sans-serif; font-size: 12px; background: #fff; }
+  .xl td, .xl th { border: 1px solid #d4d4d4; padding: 3px 6px; height: 22px; white-space: nowrap; }
+  .xl th { background: #f3f3f3; color: #666; font-weight: 400; text-align: center; min-width: 28px; }
+  .xl td.h { background: #dde5ee; font-weight: 700; }
+  .xl td.y { background: #fff2a8; }
+  .xl td.b { font-weight: 700; }
+  .xlbar { display: flex; align-items: center; gap: 6px; background: #217346; color: #fff; padding: 5px 8px;
+           font-size: 12px; border-radius: 6px 6px 0 0; }
+  .tabs { background: #f3f3f3; border: 1px solid #d4d4d4; border-top: none; padding: 3px 8px; font-size: 12px; }
+  .tabs span { background: #fff; padding: 2px 10px; border-bottom: 2px solid #217346; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><i></i>図面転記</div>
+  <button id="open">図面PDFを開く</button>
+  <input type="file" id="file" accept="application/pdf" hidden>
+  <span class="fname" id="fname"></span>
+  <span class="spacer"></span>
+  <label for="cfg" style="color:var(--sub)">転記先</label>
+  <select id="cfg" disabled></select>
+  <span class="chip" id="kind" hidden></span>
+  <span class="chip warn" id="count" hidden></span>
+</header>
+<main>
+  <section id="viewer">
+    <div id="stage"><img id="pg" alt=""></div>
+    <div id="empty"><div style="font-size:34px">⇩</div>図面PDFをここに置くか、「図面PDFを開く」を押してください</div>
+    <div id="busy"><div class="spin"></div><div id="busymsg">読み取り中</div></div>
+  </section>
+  <section id="side">
+    <div id="focus"><div class="msg"><b>図面を開くと、読み取った値がここに並びます</b>
+      <span>色の付いた欄は、図面と見比べて確かめてください</span></div></div>
+    <div id="form"></div>
+    <div id="sheet"></div>
+    <footer class="bar">
+      <span class="note" id="footnote"></span>
+      <button class="primary" id="export" disabled>Excelに書き出す</button>
+    </footer>
+  </section>
+</main>
+<script>
+const $ = (q) => document.querySelector(q);
+// 図面から読んだ文字や手で直した値を HTML に入れるときは、必ずこれを通す
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
+let S = null;          // いま開いている図面
+let sel = null;        // 選んでいる欄 {kind:'h'|'r', r, f}
+let scale = 1;
+
+fetch('/api/configs').then(r => r.json()).then(list => {
+  $('#cfg').innerHTML = '<option value="">図面を開くと選ばれます</option>' +
+    list.map(c => `<option value="${c.key}">${c.name}</option>`).join('');
+});
+
+$('#open').onclick = () => $('#file').click();
+$('#file').onchange = (e) => e.target.files[0] && load(e.target.files[0]);
+const vw = $('#viewer');
+vw.addEventListener('dragover', (e) => { e.preventDefault(); $('#empty').classList.add('drag'); });
+vw.addEventListener('dragleave', () => $('#empty').classList.remove('drag'));
+vw.addEventListener('drop', (e) => { e.preventDefault(); $('#empty').classList.remove('drag');
+  if (e.dataTransfer.files[0]) load(e.dataTransfer.files[0]); });
+
+async function load(file) {
+  $('#fname').textContent = file.name;
+  $('#empty').style.display = 'none';
+  $('#sheet').style.display = 'none'; $('#form').style.display = '';
+  $('#busy').style.display = 'flex';
+  const t0 = Date.now();
+  const tick = setInterval(() => { $('#busymsg').textContent = `読み取り中　${Math.floor((Date.now() - t0) / 1000)}秒`; }, 250);
+  const fd = new FormData(); fd.append('file', file);
+  const res = await fetch('/api/read', { method: 'POST', body: fd }).then(r => r.json());
+  clearInterval(tick);
+  show(res);
+  $('#busy').style.display = 'none';
+}
+
+$('#cfg').onchange = async () => {
+  if (!S || !$('#cfg').value) return;
+  show(await fetch(`/api/remap/${S.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key: $('#cfg').value }) }).then(r => r.json()));
+};
+
+function show(res) {
+  S = res; sel = null;
+  for (const c of Object.values(S.header)) c.state = c.flag ? 'flag' : 'ok';
+  for (const r of S.records) for (const c of Object.values(r)) c.state = c.flag ? 'flag' : 'ok';
+  $('#cfg').value = S.key; $('#cfg').disabled = false;
+  const how = S.kind === 'text' ? '文字をそのまま読みました' : '文字認識で読みました';
+  const sec = S.seconds < 1 ? '1秒未満' : `${S.seconds}秒`;
+  $('#kind').textContent = `${S.kind_label}のPDF・${how}（${sec}）`; $('#kind').hidden = false;
+  const img = $('#pg');
+  img.onload = () => { scale = img.naturalWidth / S.page[0]; fit(); drawBoxes(); };
+  img.src = `/api/page/${S.id}.png?${Date.now()}`;
+  renderForm(); updateCount(); focusMsg();
+  $('#export').disabled = false;
+}
+
+function cells() {
+  const out = [];
+  for (const f of S.header_fields) out.push({ kind: 'h', f, c: S.header[f] });
+  S.records.forEach((r, i) => S.columns.forEach(f => r[f] && out.push({ kind: 'r', r: i, f, c: r[f] })));
+  return out;
+}
+
+function renderForm() {
+  const h = S.header_fields.map(f => `<label>${f}</label>${inp('h', 0, f, S.header[f])}`).join('');
+  const weight = S.columns.map(f => Math.min(12, Math.max(3, f.length + 1,
+    ...S.records.map(r => (r[f] && r[f].value || '').length))));
+  const sum = weight.reduce((a, b) => a + b, 0);
+  const head = '<tr><th></th>' + S.columns.map((c, i) => `<th style="width:${(weight[i] / sum * 94).toFixed(1)}%">${c}</th>`).join('') + '</tr>';
+  const body = S.records.map((r, i) => `<tr><td class="no">${i + 1}</td>` +
+    S.columns.map(f => `<td>${r[f] ? inp('r', i, f, r[f]) : ''}</td>`).join('') + '</tr>').join('');
+  const title = $('#cfg').selectedOptions[0]?.textContent.split('（')[0] || '';
+  const legend = `<div class="legend"><span><i style="background:var(--warn)"></i>確かめる欄</span>
+    <span><i style="background:#eaf3fb;border:1px solid #b9d4ea"></i>決まりで補完した欄</span>
+    <span><i style="background:#f2fbf5;border:1px solid #9fd3b4"></i>確かめた欄</span></div>`;
+  $('#form').innerHTML = `<h3>表題欄</h3><div class="hgrid">${h}</div><h3>${title}（${S.records.length}行）</h3>
+    ${legend}<table class="rec">${head}${body}</table>`;
+  $('#form').querySelectorAll('input.v').forEach(el => {
+    el.onfocus = () => select(el.dataset.k, +el.dataset.r, el.dataset.f);
+    el.oninput = () => { const c = get(el.dataset.k, +el.dataset.r, el.dataset.f); c.value = el.value;
+      if (c.state === 'flag') c.state = 'fixed'; paint(); };
+    el.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault();
+      const c = get(el.dataset.k, +el.dataset.r, el.dataset.f); if (c.state === 'flag') c.state = 'fixed'; paint(); nextFlag(); } };
+  });
+  paint();
+}
+
+function inp(k, r, f, c) {
+  return `<input class="v" data-k="${k}" data-r="${r}" data-f="${f}" value="${esc(c.value)}">`;
+}
+
+function get(k, r, f) { return k === 'h' ? S.header[f] : S.records[r][f]; }
+
+function paint() {
+  $('#form').querySelectorAll('input.v').forEach(el => {
+    const c = get(el.dataset.k, +el.dataset.r, el.dataset.f);
+    el.classList.toggle('flag', c.state === 'flag');
+    el.classList.toggle('fixed', c.state === 'fixed');
+    el.classList.toggle('derived', !!c.derived && c.state === 'ok');
+    el.classList.toggle('sel', !!sel && sel.k === el.dataset.k && sel.r === +el.dataset.r && sel.f === el.dataset.f);
+  });
+  drawBoxes(); updateCount();
+}
+
+function updateCount() {
+  const n = cells().filter(x => x.c.state === 'flag').length;
+  $('#count').hidden = false;
+  $('#count').className = 'chip ' + (n ? 'warn' : 'done');
+  $('#count').textContent = n ? `確かめる欄 ${n}` : '確かめる欄 0';
+  $('#footnote').textContent = n ? '色の付いた欄は、Excelでも黄色で残ります' : '';
+}
+
+function select(k, r, f) {
+  sel = { k, r, f };
+  const c = get(k, r, f);
+  paint(); focusMsg();
+  const b = c.bbox || nearBox(k, r);
+  if (b) zoomTo(b); else fit();
+}
+
+function nearBox(k, r) {       // 値の見つからなかった欄は、同じ行の他の欄の場所を見せる
+  if (k !== 'r') return null;
+  const row = S.records[r];
+  const bs = Object.values(row).map(c => c.bbox).filter(Boolean);
+  if (!bs.length) return null;
+  return [Math.min(...bs.map(b => b[0])), Math.min(...bs.map(b => b[1])), Math.max(...bs.map(b => b[2])), Math.max(...bs.map(b => b[3]))];
+}
+
+function focusMsg() {
+  const box = $('#focus');
+  if (!S) return;
+  if (!sel) {
+    const n = cells().filter(x => x.c.state === 'flag').length;
+    const blank = cells().filter(x => !x.c.value).length;
+    const title = n ? `確かめる欄が ${n} か所あります` : '確かめる欄はありません';
+    const sub = n ? '黄色の欄を押すと、図面のその場所を大きく出します'
+      : blank ? `空欄が ${blank} か所あります。図面に書かれていない欄かを確かめてから、Excelに書き出してください`
+      : '内容を確かめたら、Excelに書き出してください';
+    box.innerHTML = `<div class="msg"><b>${title}</b><span>${sub}</span></div>
+      ${n ? '<button id="go">最初の欄へ</button>' : ''}`;
+    if (n) $('#go').onclick = nextFlag;
+    return;
+  }
+  const c = get(sel.k, sel.r, sel.f);
+  const where = sel.k === 'h' ? sel.f : `${sel.r + 1}行目の${sel.f}`;
+  let msg, sub;
+  if (c.state === 'flag') {
+    msg = `${where}：${c.reasons.join('／')}`;
+    sub = '図面と見比べて、違っていたら直してください';
+  } else if (c.state === 'fixed') {
+    msg = `${where}：確かめ済み`; sub = c.note || '';
+  } else {
+    msg = `${where}：${c.value || '（空欄）'}`; sub = c.note || '';
+  }
+  box.innerHTML = `<div class="msg"><b>${esc(msg)}</b><span>${esc(sub)}</span></div>
+    ${c.state === 'flag' ? '<button id="okbtn">このままでよい</button>' : ''}
+    <button id="nextbtn">次の欄へ</button>`;
+  if ($('#okbtn')) $('#okbtn').onclick = () => { c.state = 'fixed'; paint(); nextFlag(); };
+  $('#nextbtn').onclick = nextFlag;
+}
+
+function nextFlag() {
+  const list = cells();
+  const cur = sel ? list.findIndex(x => x.kind === sel.k && (x.kind === 'h' || x.r === sel.r) && x.f === sel.f) : -1;
+  const rest = list.slice(cur + 1).concat(list.slice(0, cur + 1)).find(x => x.c.state === 'flag');
+  if (!rest) { sel = null; paint(); focusMsg(); fit(); return; }
+  const el = $(`#form input[data-k="${rest.kind}"][data-r="${rest.kind === 'h' ? 0 : rest.r}"][data-f="${rest.f}"]`);
+  el.focus(); el.select(); el.scrollIntoView({ block: 'nearest' });
+}
+
+function drawBoxes() {
+  if (!S || !scale) return;
+  $('#stage').querySelectorAll('.box').forEach(b => b.remove());
+  for (const x of cells()) {
+    const b = x.c.bbox; if (!b) continue;
+    const d = document.createElement('div');
+    d.className = 'box ' + (x.c.state === 'flag' ? 'flag' : x.c.state === 'fixed' ? 'fixed' : '');
+    if (sel && sel.k === x.kind && (x.kind === 'h' || sel.r === x.r) && sel.f === x.f) d.classList.add('sel');
+    Object.assign(d.style, { left: `${b[0] * scale - 2}px`, top: `${b[1] * scale - 2}px`,
+      width: `${(b[2] - b[0]) * scale + 4}px`, height: `${(b[3] - b[1]) * scale + 4}px` });
+    $('#stage').appendChild(d);
+  }
+}
+
+function fit() {
+  const img = $('#pg'); if (!img.naturalWidth) return;
+  const W = vw.clientWidth, H = vw.clientHeight;
+  const k = Math.min(W / img.naturalWidth, H / img.naturalHeight) * 0.97;
+  const x = (W - img.naturalWidth * k) / 2, y = (H - img.naturalHeight * k) / 2;
+  $('#stage').style.transform = `translate(${x}px, ${y}px) scale(${k})`;
+}
+
+function zoomTo(b) {
+  const W = vw.clientWidth, H = vw.clientHeight;
+  const cx = (b[0] + b[2]) / 2 * scale, cy = (b[1] + b[3]) / 2 * scale;
+  const bw = Math.max((b[2] - b[0]) * scale, 30), bh = Math.max((b[3] - b[1]) * scale, 16);
+  const k = Math.min(W / (bw + 280), H / (bh + 220), 3.2);
+  $('#stage').style.transform = `translate(${W / 2 - cx * k}px, ${H / 2 - cy * k}px) scale(${k})`;
+}
+window.addEventListener('resize', () => sel ? select(sel.k, sel.r, sel.f) : fit());
+
+$('#export').onclick = async () => {
+  const pack = (c) => ({ value: c.value || '', flag: c.state === 'flag', reasons: c.reasons || [] });
+  const header = Object.fromEntries(S.header_fields.map(f => [f, pack(S.header[f])]));
+  const records = S.records.map(r => Object.fromEntries(Object.entries(r).map(([f, c]) => [f, pack(c)])));
+  const res = await fetch(`/api/export/${S.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ header, records }) }).then(r => r.json());
+  const cols = res.rows[0].length;
+  const letters = Array.from({ length: cols }, (_, i) => String.fromCharCode(65 + i));
+  const grid = `<table class="xl"><tr><th></th>${letters.map(l => `<th>${l}</th>`).join('')}</tr>` +
+    res.rows.map((row, i) => `<tr><th>${i + 1}</th>${row.map(c =>
+      `<td class="${c.h ? 'h' : ''} ${c.y ? 'y' : ''} ${c.b ? 'b' : ''}">${esc(c.v)}</td>`).join('')}</tr>`).join('') + '</table>';
+  $('#form').style.display = 'none';
+  $('#sheet').style.display = 'block';
+  $('#sheet').innerHTML = `<div class="saved"><b>✓ Excelに書き出しました</b><a class="btn" href="/api/download/${encodeURIComponent(res.file)}">ファイルを開く</a>
+    <button id="back">欄に戻る</button></div>
+    <div style="margin-top:10px"><div class="xlbar">■ ${esc(res.file)}</div>${grid}<div class="tabs"><span>${esc(res.sheet)}</span></div></div>`;
+  $('#back').onclick = () => { $('#sheet').style.display = 'none'; $('#form').style.display = ''; };
+  sel = null; focusMsg(); fit();
+};
+</script>
+</body>
+</html>

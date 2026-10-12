@@ -1,0 +1,4 @@
+-r requirements.txt
+# OCR for outlined-text and scanned PDFs (CPU)
+paddlepaddle==3.3.1
+paddleocr==3.7.0

@@ -1,0 +1,21 @@
+key: aircon
+name: 空調換気機器リスト（空調・換気の設備図）
+detect: [機器表, 空調, 換気, PAC, FAN]
+template: 空調換気機器リスト.xlsx
+sheet: 機器リスト
+title: 空調換気機器リスト
+header:
+  - {field: 工事名称, labels: [工事名称, 工事名, 物件名], cell: C3}
+  - {field: 図面名称, labels: [図面名称, 図面名], cell: C4}
+  - {field: 図番, labels: [図番, 図面番号], cell: F3, check: '[A-Z]{1,2}-\d{2,3}'}
+  - {field: 日付, labels: [日付, 作成日], cell: F4, check: '\d{4}\.\d{2}\.\d{2}'}
+records:
+  mode: table
+  headers: {記号: [記号], 名称: [名称], 型式: [型式], 台数: [台数], 設置場所: [設置場所]}
+  key: 記号
+  required: [記号, 名称, 型式, 台数, 設置場所]
+  vocab: [{field: 名称, sheet: 機器名称, column: 名称}]
+  checks: {記号: '[A-Z]{2,3}-\d', 型式: '[A-Z]{2}-\d{3,4}[A-Z]{0,2}', 台数: '\d+'}
+  count_on_plan: {symbol: 記号, count: 台数}
+  columns: [記号, 名称, 型式, 台数, 設置場所]
+start_row: 7

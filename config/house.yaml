@@ -1,0 +1,24 @@
+key: house
+name: 部屋一覧表（住宅の平面図）
+detect: [平面図, 帖, CH=]
+template: 部屋一覧表.xlsx
+sheet: 部屋一覧
+title: 部屋一覧表
+header:
+  - {field: 工事名称, labels: [工事名称, 工事名, 物件名], cell: C3}
+  - {field: 図面名称, labels: [図面名称, 図面名], cell: C4}
+  - {field: 図番, labels: [図番, 図面番号], cell: F3, check: '[A-Z]{1,2}-\d{2,3}'}
+  - {field: 日付, labels: [日付, 作成日], cell: F4, check: '\d{4}\.\d{2}\.\d{2}'}
+records:
+  mode: rooms
+  anchor: {field: 部屋名, vocab: 部屋名, vocab_column: 部屋名}
+  attrs:
+    - {field: 帖数, pattern: '(\d+(?:\.\d)?)帖'}
+    - {field: 天井高, pattern: 'CH=?(\d{4})'}
+  radius: 45
+  defaults:
+    - {field: 天井高, from_note: '特記なき限りCH=?(\d{4})'}
+  derive:
+    - {field: 区分, lookup: 部屋名, key_column: 部屋名, column: 区分, from: 部屋名}
+  columns: [部屋名, 帖数, 天井高, 区分]
+start_row: 7

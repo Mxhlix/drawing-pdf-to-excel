@@ -1,0 +1,21 @@
+key: part
+name: 部品表（機械の部品図）
+detect: [品番, 材質, 尺度, 表面処理, 数量]
+template: 部品表.xlsx
+sheet: 部品表
+title: 部品表
+header:
+  - {field: 図番, labels: [図番, 図面番号], cell: C3, check: '[A-Z]{2}-\d{4}-\d{4}'}
+  - {field: 品名, labels: [品名], cell: C4}
+  - {field: 材質, labels: [材質], cell: F3}
+  - {field: 表面処理, labels: [表面処理], cell: F4}
+  - {field: 尺度, labels: [尺度, 縮尺], cell: I3, check: '\d+:\d+'}
+  - {field: 日付, labels: [日付, 作成日], cell: I4, check: '\d{4}\.\d{2}\.\d{2}'}
+records:
+  mode: table
+  headers: {品番: [品番], 品名: [品名], 材質: [材質], 数量: [数量]}
+  key: 品番
+  required: [品番, 品名, 材質, 数量]
+  checks: {品番: '\d+', 数量: '\d+', 材質: '[A-Z0-9]+'}
+  columns: [品番, 品名, 材質, 数量]
+start_row: 7
